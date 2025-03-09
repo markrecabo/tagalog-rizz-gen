@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
-  const { prompt } = await req.json();
+  const { prompt, scenario, count = 1 } = await req.json();
+  
+  // Default scenario if none provided
+  const contextScenario = scenario || "You as a guy wanting to say a good pick up line on a girl you are talking for the first time to get her number or social info";
   
   try {
     const apiKey = process.env.OPENROUTER_API_KEY?.trim().replace(/^["']|["']$/g, '');
@@ -11,6 +14,8 @@ export async function POST(req: Request) {
     if (!apiKey.startsWith('sk-or-')) {
       throw new Error('Invalid OpenRouter API key format. Key should start with sk-or-');
     }
+
+    const lineCount = Math.min(Math.max(1, Number(count)), 20); // Limit between 1 and 20
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -24,7 +29,7 @@ export async function POST(req: Request) {
         model: 'deepseek/deepseek-chat:free',
         messages: [{
           role: 'user',
-          content: `Generate a creative tagalog pick-up line about: ${prompt}. Keep it under 2 sentences and use romantic taglish if appropriate.`
+          content: `Scenario: ${contextScenario}\n\nGenerate ${lineCount} creative tagalog pick-up lines about: ${prompt}. Keep each under 2 sentences and use romantic taglish if appropriate. Format your response as a numbered list from 1 to ${lineCount}.`
         }]
       }),
     });
@@ -43,7 +48,12 @@ export async function POST(req: Request) {
     if (!data.choices?.[0]?.message?.content) {
       throw new Error('Invalid response format from API');
     }
-    return NextResponse.json({ text: data.choices[0].message.content });
+    
+    // Process the response to extract individual lines
+    const content = data.choices[0].message.content;
+    const lines = processPickupLines(content, lineCount);
+    
+    return NextResponse.json({ lines });
   } catch (error) {
     console.error('Error generating response:', error);
     return NextResponse.json(
@@ -51,4 +61,21 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+// Helper function to process the response into individual pickup lines
+function processPickupLines(content: string, expectedCount: number): string[] {
+  // Try to extract numbered lines (1. Line one, 2. Line two, etc.)
+  const numberedLineRegex = /\d+\.\s*(.*?)(?=\n\d+\.|\n*$)/g;
+  const matches = Array.from(content.matchAll(numberedLineRegex)).map(match => match[1].trim());
+  
+  if (matches.length > 0) {
+    return matches;
+  }
+  
+  // Fallback: split by newlines and filter empty lines
+  const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  // If we still don't have enough lines, just return the whole content as one line
+  return lines.length > 0 ? lines : [content.trim()];
 }
