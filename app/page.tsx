@@ -390,9 +390,9 @@ export default function ChatPage() {
                   className="hover:opacity-90 transition-opacity"
                 >
                   <img 
-                    src="/img/kofi-profile.jpg" 
+                    src="/kofi-profile.jpg" 
                     alt="Support Mark on Ko-fi" 
-                    className="w-16 h-16 rounded-full border-2 border-primary mb-2"
+                    className="w-full max-w-[120px] border border-primary mb-2"
                   />
                   <p className="text-xs text-center text-muted-foreground">Support on Ko-fi</p>
                 </a>
