@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -15,28 +14,43 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Heart, X, Settings, LogOut, LogIn } from "lucide-react";
+import { Heart, X, Settings, LogOut, LogIn, Sparkles, Coffee, Music } from "lucide-react";
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 type PickupLine = {
   id: string;
   content: string;
+  translation?: string;
   saved: boolean;
 };
 
 type FavoritePickupLine = {
   id: string;
   content: string;
+  translation?: string;
   user_id: string;
   created_at: string;
 };
 
+type Category = "romantic" | "funny" | "naughty";
+
 const DEFAULT_SCENARIO = "You as a guy wanting to say a good pick up line on a girl you are talking for the first time to get her number or social info";
+
+const CATEGORY_ICONS = {
+  romantic: <Sparkles className="h-4 w-4 mr-2" />,
+  funny: <Coffee className="h-4 w-4 mr-2" />,
+  naughty: <Music className="h-4 w-4 mr-2" />
+};
+
+const CATEGORY_DESCRIPTIONS = {
+  romantic: "Sweet and heartfelt lines to show your affection",
+  funny: "Humorous lines that will make them laugh",
+  naughty: "Playful and flirty lines with a bit of spice"
+};
 
 export default function ChatPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [input, setInput] = useState('');
   const [lineCount, setLineCount] = useState<string>("5");
   const [pickupLines, setPickupLines] = useState<PickupLine[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +61,8 @@ export default function ChatPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [showTranslations, setShowTranslations] = useState(true);
 
   const supabase = createClientComponentClient();
 
@@ -105,12 +121,8 @@ export default function ChatPage() {
     }
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!input.trim()) return;
-
+  // Generate pickup lines based on scenario and category
+  const generatePickupLines = async () => {
     setLoading(true);
     setError(null);
 
@@ -120,7 +132,12 @@ export default function ChatPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: input, scenario: scenario, count: parseInt(lineCount) }),
+        body: JSON.stringify({ 
+          scenario: scenario, 
+          count: parseInt(lineCount),
+          category: selectedCategory,
+          includeTranslations: true
+        }),
         credentials: 'include'
       });
 
@@ -130,9 +147,10 @@ export default function ChatPage() {
         setError(data.error);
         setPickupLines([]);
       } else {
-        const newLines = data.lines.map((line: string) => ({
+        const newLines = data.lines.map((line: { tagalog: string, translation: string }) => ({
           id: Math.random().toString(36).substring(2, 9),
-          content: line,
+          content: line.tagalog,
+          translation: line.translation,
           saved: false
         }));
         setPickupLines(newLines);
@@ -164,7 +182,10 @@ export default function ChatPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content: lineToSave.content }),
+        body: JSON.stringify({ 
+          content: lineToSave.content,
+          translation: lineToSave.translation
+        }),
         credentials: 'include'
       });
 
@@ -239,10 +260,50 @@ export default function ChatPage() {
     router.push('/login');
   };
 
+  // Handle category selection
+  const handleCategorySelect = (category: Category) => {
+    setSelectedCategory(prev => prev === category ? null : category);
+  };
+
+  // Toggle translations visibility
+  const toggleTranslations = () => {
+    setShowTranslations(prev => !prev);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex flex-col md:flex-row gap-4">
-        <div className="md:w-2/3">
+        {/* Category Filter */}
+        <div className="md:w-1/6">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="text-center text-sm">Categories</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-2">
+                {(["romantic", "funny", "naughty"] as Category[]).map((category) => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? "default" : "outline"}
+                    className="justify-start"
+                    onClick={() => handleCategorySelect(category)}
+                  >
+                    {CATEGORY_ICONS[category]}
+                    <span className="capitalize">{category}</span>
+                  </Button>
+                ))}
+              </div>
+              {selectedCategory && (
+                <div className="mt-4 text-xs text-muted-foreground">
+                  {CATEGORY_DESCRIPTIONS[selectedCategory]}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <div className="md:w-1/2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-center flex-1">Tagalog Rizz Generator</CardTitle>
@@ -288,19 +349,7 @@ export default function ChatPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Enter your prompt..."
-                    disabled={loading}
-                  />
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Generating...' : 'Rizz'}
-                  </Button>
-                </div>
-
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">Number of pick-up lines:</div>
                   <ToggleGroup type="single" value={lineCount} onValueChange={(value) => value && setLineCount(value)}>
@@ -309,7 +358,15 @@ export default function ChatPage() {
                     <ToggleGroupItem value="20" aria-label="20 lines">20</ToggleGroupItem>
                   </ToggleGroup>
                 </div>
-              </form>
+
+                <Button 
+                  onClick={generatePickupLines} 
+                  disabled={loading} 
+                  className="w-full"
+                >
+                  {loading ? 'Generating...' : 'Generate Pickup Lines'}
+                </Button>
+              </div>
 
               {error && (
                 <div className="p-4 bg-red-50 text-red-600 rounded-md">
@@ -319,12 +376,33 @@ export default function ChatPage() {
 
               {pickupLines.length > 0 && (
                 <div className="mt-6 space-y-4">
-                  <h3 className="text-lg font-medium">Generated Pick-up Lines</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">
+                      Generated Pick-up Lines
+                      {selectedCategory && (
+                        <span className="ml-2 text-sm font-normal text-muted-foreground capitalize">
+                          ({selectedCategory})
+                        </span>
+                      )}
+                    </h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={toggleTranslations}
+                    >
+                      {showTranslations ? 'Hide' : 'Show'} Translations
+                    </Button>
+                  </div>
                   <div className="space-y-3">
                     {pickupLines.map((line) => (
                       <Card key={line.id} className="relative">
                         <CardContent className="p-4">
-                          <p>{line.content}</p>
+                          <p className="font-medium">{line.content}</p>
+                          {showTranslations && line.translation && (
+                            <p className="text-sm text-muted-foreground mt-1 italic">
+                              {line.translation}
+                            </p>
+                          )}
                           <div className="flex justify-start mt-2 gap-2">
                             <Button
                               variant="outline"
@@ -372,7 +450,14 @@ export default function ChatPage() {
                     <Card key={favorite.id} className="bg-muted/30">
                       <CardContent className="p-3">
                         <div className="flex justify-between items-start gap-2">
-                          <p className="text-sm">{favorite.content}</p>
+                          <div>
+                            <p className="text-sm font-medium">{favorite.content}</p>
+                            {showTranslations && favorite.translation && (
+                              <p className="text-xs text-muted-foreground mt-1 italic">
+                                {favorite.translation}
+                              </p>
+                            )}
+                          </div>
                           <Button
                             variant="ghost"
                             size="icon"

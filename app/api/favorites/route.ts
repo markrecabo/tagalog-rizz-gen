@@ -105,7 +105,7 @@ export async function GET(request: Request) {
 // POST: Save a new favorite
 export async function POST(request: Request) {
   try {
-    const { content } = await request.json()
+    const { content, translation } = await request.json()
     
     if (!content) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 })
@@ -149,7 +149,8 @@ export async function POST(request: Request) {
       .from('favorites')
       .insert({
         user_id: user.id,
-        content: content
+        content: content,
+        translation: translation || null
       })
       .select()
       .single()
