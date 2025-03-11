@@ -74,7 +74,7 @@ export async function POST(req: Request) {
         let errorData;
         try {
           errorData = JSON.parse(errorText);
-        } catch (e) {
+        } catch (_) {
           errorData = { rawText: errorText };
         }
         
