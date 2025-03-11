@@ -4,3 +4,9 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Force Next.js to run in standalone mode
+[build.environment]
+  NEXT_STANDALONE = "true"
+  NEXT_USE_NETLIFY_EDGE = "true"
+  NODE_ENV = "production"
