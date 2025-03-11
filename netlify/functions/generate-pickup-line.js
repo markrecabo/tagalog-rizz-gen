@@ -41,102 +41,8 @@ exports.handler = async function(event, context) {
       ? "For each pickup line, also provide an English translation. Format your response as a JSON array with each item having 'tagalog' and 'translation' fields."
       : "Format your response as a numbered list from 1 to " + count + ".";
 
-    // Make the request to OpenRouter API
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}`,
-        'X-Title': 'Tagalog Rizz Chat'
-      },
-      body: JSON.stringify({
-        model: 'deepseek/deepseek-chat:free',
-        messages: [{
-          role: 'user',
-          content: `Scenario: ${contextScenario}\n\nGenerate ${count} creative tagalog pick-up lines. ${categoryPrompt} ${translationInstructions}`
-        }]
-      }),
-    });
-
-    console.log('OpenRouter API response status:', response.status);
-    
-    // Handle API errors
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { rawText: errorText };
-      }
-      
-      console.error('OpenRouter API Error:', {
-        status: response.status,
-        data: errorData,
-        apiKeyPrefix: apiKey.substring(0, 5) + '...',
-        apiKeyLength: apiKey.length
-      });
-      
-      // If there's an error, use fallback pickup lines
-      if (response.status === 502 || errorText.includes('unknown error')) {
-        return provideFallbackLines(count);
-      }
-      
-      return {
-        statusCode: response.status,
-        body: JSON.stringify({ error: `API request failed with status ${response.status}` }),
-        headers: { 'Content-Type': 'application/json' }
-      };
-    }
-
-    // Process the successful response
-    const data = await response.json();
-    
-    if (!data.choices?.[0]?.message?.content) {
-      console.error('Invalid response format from OpenRouter API:', data);
-      return provideFallbackLines(count);
-    }
-    
-    // Process the response content
-    const content = data.choices[0].message.content;
-    console.log('Raw API response content:', content);
-    
-    let lines = [];
-    if (includeTranslations) {
-      try {
-        const jsonLines = processJsonResponse(content, count);
-        // If processJsonResponse returns undefined or empty array, fall back to text processing
-        if (!jsonLines || jsonLines.length === 0) {
-          console.log('JSON processing failed, falling back to text processing');
-          const textLines = processPickupLines(content, count);
-          lines = textLines.map(line => ({ tagalog: line, translation: '' }));
-        } else {
-          lines = jsonLines;
-        }
-      } catch (error) {
-        console.error('Error in JSON processing:', error instanceof Error ? error.message : 'Unknown error');
-        const textLines = processPickupLines(content, count);
-        lines = textLines.map(line => ({ tagalog: line, translation: '' }));
-      }
-    } else {
-      const textLines = processPickupLines(content, count);
-      lines = textLines.map(line => ({ tagalog: line, translation: '' }));
-    }
-    
-    // Ensure lines is always an array
-    if (!Array.isArray(lines)) {
-      console.error('Lines is not an array:', lines);
-      lines = [];
-    }
-    
-    console.log('Processed lines:', lines);
-    
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ lines }),
-      headers: { 'Content-Type': 'application/json' }
-    };
+    // Use fallback pickup lines directly to avoid timeout issues
+    return provideFallbackLines(count);
     
   } catch (error) {
     console.error('Error generating response:', error instanceof Error ? error.message : 'Unknown error');
@@ -171,6 +77,26 @@ function provideFallbackLines(count) {
     {
       tagalog: "Pwede ba kitang tawaging keyboard? Kasi ikaw ang type ko.",
       translation: "Can I call you a keyboard? Because you're just my type."
+    },
+    {
+      tagalog: "Ikaw ba ay isang libro? Kasi hindi ko maalis ang aking mga mata sa iyo.",
+      translation: "Are you a book? Because I can't take my eyes off you."
+    },
+    {
+      tagalog: "Pwede ba kitang tawaging kalendaryo? Kasi kapag nakikita kita, napapangiti ako sa buong araw.",
+      translation: "Can I call you a calendar? Because when I see you, you make me smile all day."
+    },
+    {
+      tagalog: "Ikaw ba ay isang bituin? Kasi kapag nakikita kita, parang nasa langit ako.",
+      translation: "Are you a star? Because when I see you, I feel like I'm in heaven."
+    },
+    {
+      tagalog: "Pwede ba kitang tawaging chocolate? Kasi ang tamis ng ngiti mo.",
+      translation: "Can I call you chocolate? Because your smile is so sweet."
+    },
+    {
+      tagalog: "Ikaw ba ay isang araw? Kasi kapag wala ka, madilim ang mundo ko.",
+      translation: "Are you the sun? Because when you're not around, my world is dark."
     }
   ];
   
@@ -179,88 +105,8 @@ function provideFallbackLines(count) {
     statusCode: 200,
     body: JSON.stringify({ 
       lines: fallbackLines.slice(0, Math.min(count, fallbackLines.length)),
-      note: "Using fallback pickup lines due to API issues. Please try again later."
+      note: "Using fallback pickup lines. OpenRouter API calls from Netlify functions are timing out."
     }),
     headers: { 'Content-Type': 'application/json' }
   };
-}
-
-// Process pickup lines from text response
-function processPickupLines(content, count) {
-  // Split by newlines and filter out empty lines
-  let lines = content.split('\n').filter(line => line.trim() !== '');
-  
-  // Remove any numbering or bullet points
-  lines = lines.map(line => {
-    // Remove numbering (e.g., "1.", "2.", etc.)
-    return line.replace(/^\d+[\.\)]\s*/, '')
-      // Remove bullet points
-      .replace(/^[-•*]\s*/, '')
-      // Trim whitespace
-      .trim();
-  });
-  
-  // Filter out any lines that are too short (likely not pickup lines)
-  lines = lines.filter(line => line.length > 5);
-  
-  // Limit to the requested count
-  return lines.slice(0, count);
-}
-
-// Process JSON response for pickup lines with translations
-function processJsonResponse(content, count) {
-  try {
-    // Try to extract JSON from the content
-    let jsonContent = content;
-    
-    // If content is wrapped in backticks, extract it
-    const jsonMatch = content.match(/```(?:json)?([\s\S]*?)```/);
-    if (jsonMatch && jsonMatch[1]) {
-      jsonContent = jsonMatch[1].trim();
-    }
-    
-    // Parse the JSON
-    let parsed;
-    try {
-      parsed = JSON.parse(jsonContent);
-    } catch (e) {
-      // If direct parsing fails, try to find an array in the text
-      const arrayMatch = content.match(/\[\s*\{[\s\S]*\}\s*\]/);
-      if (arrayMatch) {
-        parsed = JSON.parse(arrayMatch[0]);
-      } else {
-        throw new Error('Failed to parse JSON');
-      }
-    }
-    
-    // Handle different JSON formats
-    if (Array.isArray(parsed)) {
-      // Format: [{tagalog: "...", translation: "..."}, ...]
-      return parsed.slice(0, count).map(item => ({
-        tagalog: item.tagalog || item.Tagalog || '',
-        translation: item.translation || item.Translation || item.english || item.English || ''
-      }));
-    } else if (parsed && typeof parsed === 'object') {
-      // Format: {1: {tagalog: "...", translation: "..."}, ...}
-      const lines = [];
-      for (const key in parsed) {
-        if (lines.length >= count) break;
-        const item = parsed[key];
-        if (item && typeof item === 'object') {
-          lines.push({
-            tagalog: item.tagalog || item.Tagalog || '',
-            translation: item.translation || item.Translation || item.english || item.English || ''
-          });
-        }
-      }
-      return lines;
-    }
-    // If parsed is not an array, return an empty array
-    return [];
-  } catch (error) {
-    console.error('Error parsing JSON response:', error instanceof Error ? error.message : 'Unknown error');
-    // Fall back to regular processing if JSON parsing fails
-  }
-  
-  return [];
 }
