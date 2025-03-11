@@ -1,18 +1,6 @@
 [build]
-  command = "npm install && npm run build"
+  command = "npm run build"
   publish = ".next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# Force Next.js to run in standalone mode
-[build.environment]
-  NEXT_STANDALONE = "true"
-  NEXT_USE_NETLIFY_EDGE = "true"
-  NODE_ENV = "production"
-
-# Add redirects for SPA behavior
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
