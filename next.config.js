@@ -17,11 +17,6 @@ const nextConfig = {
   images: {
     domains: ['supabase.io'],
   },
-  
-  // Disable server actions for compatibility with Netlify
-  experimental: {
-    serverActions: false,
-  },
 }
 
 module.exports = nextConfig
