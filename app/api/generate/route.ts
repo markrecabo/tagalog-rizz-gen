@@ -74,7 +74,7 @@ export async function POST(req: Request) {
         let errorData;
         try {
           errorData = JSON.parse(errorText);
-        } catch (_) {
+        } catch {
           errorData = { rawText: errorText };
         }
         
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
             lines = jsonLines;
           }
         } catch (error) {
-          console.error('Error in JSON processing:', error);
+          console.error('Error in JSON processing:', error instanceof Error ? error.message : 'Unknown error');
           const textLines = processPickupLines(content, lineCount);
           lines = textLines.map(line => ({ tagalog: line, translation: '' }));
         }
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
       
       return NextResponse.json({ lines });
     } catch (error) {
-      console.error('Error generating response:', error);
+      console.error('Error generating response:', error instanceof Error ? error.message : 'Unknown error');
       
       // Provide fallback pickup lines if the API fails
       if (error instanceof Error && error.message.includes('502')) {
@@ -172,7 +172,7 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    console.error('Error generating response:', error);
+    console.error('Error generating response:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate response' },
       { status: 500 }
@@ -209,7 +209,7 @@ function processJsonResponse(content: string, expectedCount: number): { tagalog:
     // If parsed is not an array, return an empty array
     return [];
   } catch (error) {
-    console.error('Error parsing JSON response:', error);
+    console.error('Error parsing JSON response:', error instanceof Error ? error.message : 'Unknown error');
     // Fall back to regular processing if JSON parsing fails
   }
   
