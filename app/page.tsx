@@ -151,16 +151,22 @@ export default function ChatPage() {
         credentials: 'include'
       });
 
+      console.log('API Response status:', response.status);
       const data = await response.json();
+      console.log('API Response data:', JSON.stringify(data, null, 2));
 
       if (data.error) {
         setError(data.error);
         setPickupLines([]);
+      } else if (!data.lines || !Array.isArray(data.lines)) {
+        console.error('Invalid response format:', data);
+        setError('Invalid response format from server. Please try again.');
+        setPickupLines([]);
       } else {
         const newLines = data.lines.map((line: { tagalog: string, translation: string }) => ({
           id: Math.random().toString(36).substring(2, 9),
-          content: line.tagalog,
-          translation: line.translation,
+          content: line.tagalog || '',
+          translation: line.translation || '',
           saved: false
         }));
         setPickupLines(newLines);
