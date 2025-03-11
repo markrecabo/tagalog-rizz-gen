@@ -44,73 +44,120 @@ export async function POST(req: Request) {
       ? "For each pickup line, also provide an English translation. Format your response as a JSON array with each item having 'tagalog' and 'translation' fields."
       : "Format your response as a numbered list from 1 to " + lineCount + ".";
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}`,
-        'X-Title': 'Tagalog Rizz Chat'
-      },
-      body: JSON.stringify({
-        model: 'deepseek/deepseek-chat:free',
-        messages: [{
-          role: 'user',
-          content: `Scenario: ${contextScenario}\n\nGenerate ${lineCount} creative tagalog pick-up lines. ${categoryPrompt} ${translationInstructions}`
-        }]
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('OpenRouter API Error:', {
-        status: response.status,
-        data: errorData,
-        apiKeyPrefix: apiKey.substring(0, 6) + '...'
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}`,
+          'X-Title': 'Tagalog Rizz Chat'
+        },
+        body: JSON.stringify({
+          model: 'deepseek/deepseek-chat:free',
+          messages: [{
+            role: 'user',
+            content: `Scenario: ${contextScenario}\n\nGenerate ${lineCount} creative tagalog pick-up lines. ${categoryPrompt} ${translationInstructions}`
+          }]
+        }),
       });
-      throw new Error(`API request failed with status ${response.status}: ${JSON.stringify(errorData)}`);
-    }
 
-    const data = await response.json();
-    if (!data.choices?.[0]?.message?.content) {
-      throw new Error('Invalid response format from API');
-    }
-    
-    // Process the response based on whether translations are included
-    const content = data.choices[0].message.content;
-    console.log('Raw API response content:', content);
-    
-    let lines: { tagalog: string, translation: string }[] = [];
-    if (includeTranslations) {
-      try {
-        const jsonLines = processJsonResponse(content, lineCount);
-        // If processJsonResponse returns undefined or empty array, fall back to text processing
-        if (!jsonLines || jsonLines.length === 0) {
-          console.log('JSON processing failed, falling back to text processing');
+      console.log('OpenRouter API response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('OpenRouter API Error:', {
+          status: response.status,
+          data: errorData,
+          apiKeyPrefix: apiKey.substring(0, 6) + '...'
+        });
+        throw new Error(`API request failed with status ${response.status}: ${JSON.stringify(errorData)}`);
+      }
+
+      const data = await response.json();
+      console.log('OpenRouter API response received successfully');
+      
+      if (!data.choices?.[0]?.message?.content) {
+        console.error('Invalid response format from OpenRouter API:', data);
+        throw new Error('Invalid response format from API');
+      }
+      
+      // Process the response based on whether translations are included
+      const content = data.choices[0].message.content;
+      console.log('Raw API response content:', content);
+      
+      let lines: { tagalog: string, translation: string }[] = [];
+      if (includeTranslations) {
+        try {
+          const jsonLines = processJsonResponse(content, lineCount);
+          // If processJsonResponse returns undefined or empty array, fall back to text processing
+          if (!jsonLines || jsonLines.length === 0) {
+            console.log('JSON processing failed, falling back to text processing');
+            const textLines = processPickupLines(content, lineCount);
+            lines = textLines.map(line => ({ tagalog: line, translation: '' }));
+          } else {
+            lines = jsonLines;
+          }
+        } catch (error) {
+          console.error('Error in JSON processing:', error);
           const textLines = processPickupLines(content, lineCount);
           lines = textLines.map(line => ({ tagalog: line, translation: '' }));
-        } else {
-          lines = jsonLines;
         }
-      } catch (error) {
-        console.error('Error in JSON processing:', error);
+      } else {
         const textLines = processPickupLines(content, lineCount);
         lines = textLines.map(line => ({ tagalog: line, translation: '' }));
       }
-    } else {
-      const textLines = processPickupLines(content, lineCount);
-      lines = textLines.map(line => ({ tagalog: line, translation: '' }));
+      
+      // Ensure lines is always an array
+      if (!Array.isArray(lines)) {
+        console.error('Lines is not an array:', lines);
+        lines = [];
+      }
+      
+      console.log('Processed lines:', lines);
+      
+      return NextResponse.json({ lines });
+    } catch (error) {
+      console.error('Error generating response:', error);
+      
+      // Provide fallback pickup lines if the API fails
+      if (error instanceof Error && error.message.includes('502')) {
+        console.log('Using fallback pickup lines due to 502 error');
+        const fallbackLines = [
+          {
+            tagalog: "Pwede ba kitang tawaging Google? Kasi lagi kang may sagot sa mga hinahanap ko.",
+            translation: "Can I call you Google? Because you always have the answer to what I'm looking for."
+          },
+          {
+            tagalog: "Ikaw ba ay isang kape? Kasi hindi ako makatulog kakaisip sayo.",
+            translation: "Are you coffee? Because I can't sleep thinking about you."
+          },
+          {
+            tagalog: "Pwede ba kitang tawaging WiFi? Kasi ramdam ko ang connection natin.",
+            translation: "Can I call you WiFi? Because I feel our connection."
+          },
+          {
+            tagalog: "Ikaw ba ay isang camera? Kasi sa tuwing nakikita kita, napapangiti ako.",
+            translation: "Are you a camera? Because every time I see you, I smile."
+          },
+          {
+            tagalog: "Pwede ba kitang tawaging keyboard? Kasi ikaw ang type ko.",
+            translation: "Can I call you a keyboard? Because you're just my type."
+          }
+        ];
+        
+        // Return a subset of the fallback lines based on the requested count
+        return NextResponse.json({ 
+          lines: fallbackLines.slice(0, Math.min(lineCount, fallbackLines.length)),
+          note: "Using fallback pickup lines due to API issues. Please try again later."
+        });
+      }
+      
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to generate response' },
+        { status: 500 }
+      );
     }
-    
-    // Ensure lines is always an array
-    if (!Array.isArray(lines)) {
-      console.error('Lines is not an array:', lines);
-      lines = [];
-    }
-    
-    console.log('Processed lines:', lines);
-    
-    return NextResponse.json({ lines });
   } catch (error) {
     console.error('Error generating response:', error);
     return NextResponse.json(

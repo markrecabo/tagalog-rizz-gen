@@ -170,6 +170,13 @@ export default function ChatPage() {
           saved: false
         }));
         setPickupLines(newLines);
+        
+        // Display note if present (for fallback pickup lines)
+        if (data.note) {
+          setError(data.note);
+        } else {
+          setError(null);
+        }
       }
     } catch (error) {
       console.error('Error generating pickup lines:', error);
