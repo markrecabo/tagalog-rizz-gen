@@ -60,9 +60,9 @@ exports.handler = async function(event, context) {
           model: 'google/gemini-2.0-flash-exp:free', // Using Gemini model which should be faster
           messages: [{
             role: 'user',
-            content: `Scenario: ${contextScenario}\n\nGenerate ${count} creative tagalog pick-up lines. ${categoryPrompt} ${translationInstructions}`
+            content: `Scenario: ${contextScenario}\n\nGenerate ${count <= 6 ? count : 6} creative tagalog pick-up lines. ${categoryPrompt} ${translationInstructions} Keep responses brief and concise.`
           }],
-          max_tokens: 500, // Limit token count to speed up response
+          max_tokens: 300, // Limit token count to speed up response
           temperature: 0.7 // Lower temperature for more focused responses
         }),
         signal: controller.signal
@@ -98,7 +98,7 @@ exports.handler = async function(event, context) {
       // Extract JSON from the content
       let lines = [];
       try {
-        lines = extractPickupLines(content, count, includeTranslations);
+        lines = extractPickupLines(content, count <= 6 ? count : 6, includeTranslations);
         
         if (!lines || lines.length === 0) {
           console.log('Failed to extract pickup lines, using fallbacks');

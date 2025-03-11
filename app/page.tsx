@@ -56,7 +56,7 @@ const CATEGORY_DESCRIPTIONS = {
 export default function ChatPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [lineCount, setLineCount] = useState<string>("5");
+  const [lineCount, setLineCount] = useState<string>("2");
   const [pickupLines, setPickupLines] = useState<PickupLine[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<FavoritePickupLine[]>([]);
@@ -404,9 +404,9 @@ export default function ChatPage() {
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">Number of pick-up lines:</div>
                   <ToggleGroup type="single" value={lineCount} onValueChange={(value) => value && setLineCount(value)}>
-                    <ToggleGroupItem value="5" aria-label="5 lines">5</ToggleGroupItem>
-                    <ToggleGroupItem value="10" aria-label="10 lines">10</ToggleGroupItem>
-                    <ToggleGroupItem value="20" aria-label="20 lines">20</ToggleGroupItem>
+                    <ToggleGroupItem value="2" aria-label="2 lines">2</ToggleGroupItem>
+                    <ToggleGroupItem value="4" aria-label="4 lines">4</ToggleGroupItem>
+                    <ToggleGroupItem value="6" aria-label="6 lines">6</ToggleGroupItem>
                   </ToggleGroup>
                 </div>
 
