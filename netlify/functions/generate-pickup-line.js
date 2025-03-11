@@ -183,10 +183,16 @@ function extractPickupLines(content, count, includeTranslations) {
       
       if (Array.isArray(parsed)) {
         // Format: [{tagalog: "...", translation: "..."}, ...]
-        return parsed.slice(0, count).map(item => ({
-          tagalog: item.tagalog || item.Tagalog || '',
-          translation: item.translation || item.Translation || item.english || item.English || ''
-        }));
+        return parsed.slice(0, count).map(item => {
+          // Clean up the tagalog text to remove any "tagalog:" prefix
+          let tagalogText = item.tagalog || item.Tagalog || '';
+          tagalogText = tagalogText.replace(/^(?:tagalog|Tagalog):\s*/i, '').trim();
+          
+          return {
+            tagalog: tagalogText,
+            translation: item.translation || item.Translation || item.english || item.English || ''
+          };
+        });
       } else if (parsed && typeof parsed === 'object') {
         // Format: {1: {tagalog: "...", translation: "..."}, ...}
         const lines = [];
@@ -194,8 +200,12 @@ function extractPickupLines(content, count, includeTranslations) {
           if (lines.length >= count) break;
           const item = parsed[key];
           if (item && typeof item === 'object') {
+            // Clean up the tagalog text to remove any "tagalog:" prefix
+            let tagalogText = item.tagalog || item.Tagalog || '';
+            tagalogText = tagalogText.replace(/^(?:tagalog|Tagalog):\s*/i, '').trim();
+            
             lines.push({
-              tagalog: item.tagalog || item.Tagalog || '',
+              tagalog: tagalogText,
               translation: item.translation || item.Translation || item.english || item.English || ''
             });
           }
@@ -211,6 +221,7 @@ function extractPickupLines(content, count, includeTranslations) {
   const lines = content.split('\n')
     .filter(line => line.trim().length > 0)
     .map(line => line.replace(/^\d+[\.\)]\s*/, '').replace(/^[-•*]\s*/, '').trim())
+    .map(line => line.replace(/^(?:tagalog|Tagalog):\s*/i, '').trim())
     .filter(line => line.length > 5);
   
   // For non-JSON responses, try to pair lines (odd = tagalog, even = translation)

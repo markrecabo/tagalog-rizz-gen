@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Heart, X, Settings, LogOut, LogIn, Sparkles, Coffee, Music } from "lucide-react";
+import { Heart, X, Settings, LogOut, LogIn, Sparkles, Coffee, Music, Copy, CheckCheck } from "lucide-react";
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 type PickupLine = {
@@ -67,6 +67,7 @@ export default function ChatPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [showTranslations, setShowTranslations] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Create Supabase client safely with fallback for SSR
   const supabase = typeof window !== 'undefined' 
@@ -285,7 +286,21 @@ export default function ChatPage() {
 
   // Toggle translations visibility
   const toggleTranslations = () => {
-    setShowTranslations(prev => !prev);
+    setShowTranslations(!showTranslations);
+  };
+
+  // Copy pickup line to clipboard
+  const copyToClipboard = async (id: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedId(null);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
   };
 
   return (
@@ -466,7 +481,21 @@ export default function ChatPage() {
                             >
                               <Heart className={`h-4 w-4 ${line.saved ? 'fill-red-500 text-red-500' : ''}`} />
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => copyToClipboard(line.id, line.content)}
+                              className="h-8 w-8"
+                              aria-label="Copy to clipboard"
+                            >
+                              {copiedId === line.id ? <CheckCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                            </Button>
                           </div>
+                          {copiedId === line.id && (
+                            <div className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-md shadow-sm">
+                              Copied!
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
