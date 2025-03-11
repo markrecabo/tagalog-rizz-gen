@@ -158,6 +158,11 @@ export default function ChatPage() {
       if (data.error) {
         setError(data.error);
         setPickupLines([]);
+      } else if (data.errorType && data.errorMessage) {
+        // Handle Netlify function error format
+        console.error('Netlify function error:', data);
+        setError(data.errorMessage || 'An error occurred with the API');
+        setPickupLines([]);
       } else if (!data.lines || !Array.isArray(data.lines)) {
         console.error('Invalid response format:', data);
         setError('Invalid response format from server. Please try again.');

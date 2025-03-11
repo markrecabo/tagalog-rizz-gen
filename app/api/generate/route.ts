@@ -134,8 +134,18 @@ export async function POST(req: Request) {
       console.error('Error generating response:', error instanceof Error ? error.message : 'Unknown error');
       
       // Provide fallback pickup lines if the API fails
-      if (error instanceof Error && error.message.includes('502')) {
-        console.log('Using fallback pickup lines due to 502 error');
+      console.log('Checking for 502 error condition:', JSON.stringify(error));
+      
+      // Check for 502 error in various ways
+      const errorStr = JSON.stringify(error);
+      const is502Error = 
+        (error instanceof Error && error.message.includes('502')) || 
+        errorStr.includes('502') || 
+        errorStr.includes('Bad Gateway') ||
+        (typeof error === 'object' && error !== null && 'status' in error && error.status === 502);
+      
+      if (is502Error || errorStr.includes('unknown error')) {
+        console.log('Using fallback pickup lines due to API error');
         const fallbackLines = [
           {
             tagalog: "Pwede ba kitang tawaging Google? Kasi lagi kang may sagot sa mga hinahanap ko.",
