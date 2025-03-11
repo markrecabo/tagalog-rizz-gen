@@ -170,7 +170,7 @@ function processPickupLines(content: string, expectedCount: number): string[] {
   
   // Try to extract numbered lines (1. Line one, 2. Line two, etc.)
   const numberedLineRegex = /\d+[\.\)]\s*(.*?)(?=\n\d+[\.\)]|\n*$)/g;
-  let matches = Array.from(content.matchAll(numberedLineRegex)).map(match => match[1].trim());
+  const matches = Array.from(content.matchAll(numberedLineRegex)).map(match => match[1].trim());
   
   console.log(`Found ${matches.length} lines using numbered regex`);
   

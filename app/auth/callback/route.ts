@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     console.log('Auth callback received with code:', code.substring(0, 5) + '...')
     
     // Exchange the code for a session
-    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
     
     if (exchangeError) {
       console.error('Error exchanging code for session:', exchangeError)
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error in auth callback:', error)
     return NextResponse.redirect(
-      new URL(`/login?error=Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, origin)
+      new URL('/login?error=An unexpected error occurred', origin)
     )
   }
 }

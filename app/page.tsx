@@ -34,6 +34,11 @@ type FavoritePickupLine = {
 
 type Category = "romantic" | "funny" | "naughty";
 
+type User = {
+  id: string;
+  email?: string;
+};
+
 const DEFAULT_SCENARIO = "You as a guy wanting to say a good pick up line on a girl you are talking for the first time to get her number or social info";
 
 const CATEGORY_ICONS = {
@@ -55,8 +60,7 @@ export default function ChatPage() {
   const [pickupLines, setPickupLines] = useState<PickupLine[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<FavoritePickupLine[]>([]);
-  const [showFavorites, setShowFavorites] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [scenario, setScenario] = useState(DEFAULT_SCENARIO);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -101,7 +105,7 @@ export default function ChatPage() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase.auth]);
 
   // Fetch user's favorites
   const fetchFavorites = async () => {
@@ -240,22 +244,13 @@ export default function ChatPage() {
     }
   };
 
-  // Toggle between pickup lines and favorites
-  const toggleFavorites = () => {
-    if (!user && !showFavorites) {
-      // Redirect to login if trying to view favorites without being logged in
-      router.push('/login');
-      return;
-    }
-
-    setShowFavorites(prev => !prev);
-  };
-
+  // Handle sign out
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.refresh();
   };
 
+  // Handle sign in
   const handleSignIn = () => {
     router.push('/login');
   };
