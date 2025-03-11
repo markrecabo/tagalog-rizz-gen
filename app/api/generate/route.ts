@@ -8,11 +8,17 @@ export async function POST(req: Request) {
   
   try {
     const apiKey = process.env.OPENROUTER_API_KEY?.trim().replace(/^["']|["']$/g, '');
+    console.log('API Key exists:', !!apiKey);
+    console.log('API Key prefix:', apiKey ? apiKey.substring(0, 5) + '...' : 'none');
+    
     if (!apiKey) {
       throw new Error('OPENROUTER_API_KEY is not set');
     }
-    if (!apiKey.startsWith('sk-or-')) {
-      throw new Error('Invalid OpenRouter API key format. Key should start with sk-or-');
+    
+    // Less strict validation to handle potential formatting issues
+    if (!apiKey.includes('sk-or')) {
+      console.log('API Key format issue - does not contain sk-or');
+      throw new Error('Invalid OpenRouter API key format. Key should contain sk-or');
     }
 
     const lineCount = Math.min(Math.max(1, Number(count)), 20); // Limit between 1 and 20
