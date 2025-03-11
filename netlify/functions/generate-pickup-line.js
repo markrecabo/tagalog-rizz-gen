@@ -163,7 +163,12 @@ function extractPickupLines(content, count, includeTranslations) {
       }
       
       // Additional cleanup for common issues
-      jsonContent = jsonContent.replace(/^```json\s*/g, '').replace(/^```\s*/g, '').replace(/```\s*$/g, '');
+      jsonContent = jsonContent
+        .replace(/^```json\s*/g, '')
+        .replace(/^```\s*/g, '')
+        .replace(/```\s*$/g, '')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
       
       // Parse the JSON
       let parsed;

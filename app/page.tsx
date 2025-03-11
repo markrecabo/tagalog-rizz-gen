@@ -168,12 +168,22 @@ export default function ChatPage() {
         setError('Invalid response format from server. Please try again.');
         setPickupLines([]);
       } else {
-        const newLines = data.lines.map((line: { tagalog: string, translation: string }) => ({
-          id: Math.random().toString(36).substring(2, 9),
-          content: line.tagalog || '',
-          translation: line.translation || '',
-          saved: false
-        }));
+        const newLines = data.lines.map((line: { tagalog: string, translation: string }) => {
+          // Clean up the tagalog text to remove any "tagalog:" prefix or JSON formatting
+          let content = line.tagalog || '';
+          content = content
+            .replace(/^(?:tagalog|Tagalog):\s*/i, '')
+            .replace(/^"tagalog":\s*"/, '')
+            .replace(/",$/, '')
+            .trim();
+          
+          return {
+            id: Math.random().toString(36).substring(2, 9),
+            content: content,
+            translation: line.translation || '',
+            saved: false
+          };
+        });
         setPickupLines(newLines);
         
         // Display note if present (for fallback pickup lines)
@@ -203,6 +213,13 @@ export default function ChatPage() {
       const lineToSave = pickupLines.find(line => line.id === id);
       if (!lineToSave) return;
 
+      // Clean up the content before saving
+      const cleanContent = lineToSave.content
+        .replace(/^(?:tagalog|Tagalog):\s*/i, '')
+        .replace(/^"tagalog":\s*"/, '')
+        .replace(/",$/, '')
+        .trim();
+
       setIsSaving(true);
       
       const response = await fetch('/api/favorites', {
@@ -211,7 +228,7 @@ export default function ChatPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          content: lineToSave.content,
+          content: cleanContent,
           translation: lineToSave.translation
         }),
         credentials: 'include'
@@ -292,7 +309,9 @@ export default function ChatPage() {
   // Copy pickup line to clipboard
   const copyToClipboard = async (id: string, text: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      // Clean up any "tagalog:" prefix before copying
+      const cleanText = text.replace(/^(?:tagalog|Tagalog):\s*/i, '').replace(/^"tagalog":\s*"/, '').replace(/",$/, '');
+      await navigator.clipboard.writeText(cleanText);
       setCopiedId(id);
       // Reset copied state after 2 seconds
       setTimeout(() => {
@@ -464,7 +483,9 @@ export default function ChatPage() {
                     {pickupLines.map((line) => (
                       <Card key={line.id} className="relative">
                         <CardContent className="p-4">
-                          <p lang="tl" className="font-medium">{line.content}</p>
+                          <p lang="tl" className="font-medium">
+                            {line.content.replace(/^(?:tagalog|Tagalog):\s*/i, '').replace(/^"tagalog":\s*"/, '').replace(/",$/, '')}
+                          </p>
                           {showTranslations && line.translation && (
                             <p className="text-sm text-muted-foreground mt-1 italic">
                               {line.translation}
