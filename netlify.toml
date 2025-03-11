@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "npm install && npm run build"
   publish = ".next"
 
 [[plugins]]
@@ -10,3 +10,9 @@
   NEXT_STANDALONE = "true"
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_ENV = "production"
+
+# Add redirects for SPA behavior
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
