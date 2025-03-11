@@ -137,18 +137,17 @@ export default function ChatPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/generate', {
+      // Use the Netlify function endpoint instead of the Next.js API route
+      const response = await fetch('/.netlify/functions/generate-pickup-line', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          scenario: scenario, 
-          count: parseInt(lineCount),
-          category: selectedCategory,
-          includeTranslations: true
-        }),
-        credentials: 'include'
+          scenario, 
+          count: parseInt(lineCount), 
+          category: selectedCategory 
+        })
       });
 
       console.log('API Response status:', response.status);
