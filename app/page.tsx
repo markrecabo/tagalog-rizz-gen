@@ -362,8 +362,8 @@ export default function ChatPage() {
             <CardHeader>
               <CardTitle className="text-center text-sm">Categories</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col gap-2">
+            <CardContent className="flex flex-col justify-start items-center space-y-4 h-full">
+              <div className="flex flex-col gap-2 w-full">
                 {(["romantic", "funny", "naughty"] as Category[]).map((category) => (
                   <Button
                     key={category}
@@ -377,10 +377,26 @@ export default function ChatPage() {
                 ))}
               </div>
               {selectedCategory && (
-                <div className="mt-4 text-xs text-muted-foreground">
+                <div className="mt-4 text-xs text-muted-foreground w-full">
                   {CATEGORY_DESCRIPTIONS[selectedCategory]}
                 </div>
               )}
+              
+              <div className="mt-auto pt-4 flex flex-col items-center">
+                <a 
+                  href="https://ko-fi.com/markrecabo/tip" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:opacity-90 transition-opacity"
+                >
+                  <img 
+                    src="/img/kofi-profile.jpg" 
+                    alt="Support Mark on Ko-fi" 
+                    className="w-16 h-16 rounded-full border-2 border-primary mb-2"
+                  />
+                  <p className="text-xs text-center text-muted-foreground">Support on Ko-fi</p>
+                </a>
+              </div>
             </CardContent>
           </Card>
         </div>
