@@ -10,16 +10,20 @@ export async function POST(req: Request) {
     const apiKey = process.env.OPENROUTER_API_KEY?.trim().replace(/^["']|["']$/g, '');
     console.log('API Key exists:', !!apiKey);
     console.log('API Key prefix:', apiKey ? apiKey.substring(0, 5) + '...' : 'none');
+    console.log('API Key length:', apiKey ? apiKey.length : 0);
     
     if (!apiKey) {
       throw new Error('OPENROUTER_API_KEY is not set');
     }
     
-    // Less strict validation to handle potential formatting issues
+    // Remove validation entirely to avoid any potential issues
+    // We'll let the OpenRouter API validate the key instead
+    /* 
     if (!apiKey.includes('sk-or')) {
       console.log('API Key format issue - does not contain sk-or');
       throw new Error('Invalid OpenRouter API key format. Key should contain sk-or');
     }
+    */
 
     const lineCount = Math.min(Math.max(1, Number(count)), 20); // Limit between 1 and 20
 
@@ -63,13 +67,22 @@ export async function POST(req: Request) {
       });
 
       console.log('OpenRouter API response status:', response.status);
+      console.log('OpenRouter API response headers:', JSON.stringify(Object.fromEntries([...response.headers.entries()])));
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { rawText: errorText };
+        }
+        
         console.error('OpenRouter API Error:', {
           status: response.status,
           data: errorData,
-          apiKeyPrefix: apiKey.substring(0, 6) + '...'
+          apiKeyPrefix: apiKey.substring(0, 5) + '...',
+          apiKeyLength: apiKey.length
         });
         throw new Error(`API request failed with status ${response.status}: ${JSON.stringify(errorData)}`);
       }
