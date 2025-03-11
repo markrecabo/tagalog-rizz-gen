@@ -95,10 +95,17 @@ exports.handler = async function(event, context) {
       const content = data.choices[0].message.content;
       console.log('Raw API response content (first 100 chars):', content.substring(0, 100));
       
+      // Clean up the content by removing any markdown code blocks
+      const cleanedContent = content
+        .replace(/^```(?:json)?\s*/g, '')  // Remove opening code block markers
+        .replace(/```\s*$/g, '');          // Remove closing code block markers
+      
+      console.log('Cleaned content (first 100 chars):', cleanedContent.substring(0, 100));
+      
       // Extract JSON from the content
       let lines = [];
       try {
-        lines = extractPickupLines(content, count <= 6 ? count : 6, includeTranslations);
+        lines = extractPickupLines(cleanedContent, count <= 6 ? count : 6, includeTranslations);
         
         if (!lines || lines.length === 0) {
           console.log('Failed to extract pickup lines, using fallbacks');
@@ -137,10 +144,13 @@ exports.handler = async function(event, context) {
 
 // Extract pickup lines from API response
 function extractPickupLines(content, count, includeTranslations) {
+  // Clean up the content - remove any ```json prefix and trailing backticks
+  content = content.replace(/^```json\s*/g, '').replace(/^```\s*/g, '').replace(/```\s*$/g, '');
+  
   // Try to extract JSON from the content
   if (includeTranslations) {
     try {
-      // Check for JSON in code blocks
+      // Check for JSON in code blocks - this should be redundant now but keeping as fallback
       const jsonMatch = content.match(/```(?:json)?([\s\S]*?)```/);
       let jsonContent = jsonMatch && jsonMatch[1] ? jsonMatch[1].trim() : content;
       
@@ -152,8 +162,24 @@ function extractPickupLines(content, count, includeTranslations) {
         }
       }
       
+      // Additional cleanup for common issues
+      jsonContent = jsonContent.replace(/^```json\s*/g, '').replace(/^```\s*/g, '').replace(/```\s*$/g, '');
+      
       // Parse the JSON
-      let parsed = JSON.parse(jsonContent);
+      let parsed;
+      try {
+        parsed = JSON.parse(jsonContent);
+      } catch (e) {
+        console.log('First JSON parse attempt failed:', e.message);
+        // Try with additional cleanup for quotes and escaping
+        jsonContent = jsonContent.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":');
+        try {
+          parsed = JSON.parse(jsonContent);
+        } catch (e2) {
+          console.log('Second JSON parse attempt failed:', e2.message);
+          throw e2;
+        }
+      }
       
       if (Array.isArray(parsed)) {
         // Format: [{tagalog: "...", translation: "..."}, ...]
