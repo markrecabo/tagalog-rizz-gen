@@ -41,11 +41,92 @@ exports.handler = async function(event, context) {
       ? "For each pickup line, also provide an English translation. Format your response as a JSON array with each item having 'tagalog' and 'translation' fields."
       : "Format your response as a numbered list from 1 to " + count + ".";
 
-    // Use fallback pickup lines directly to avoid timeout issues
-    return provideFallbackLines(count);
+    // Make the request to OpenRouter API with a timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout (less than Netlify's 10s limit)
     
+    try {
+      console.log('Making request to OpenRouter API with Gemini model');
+      
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}`,
+          'X-Title': 'Tagalog Rizz Chat'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.0-flash-exp:free', // Using Gemini model which should be faster
+          messages: [{
+            role: 'user',
+            content: `Scenario: ${contextScenario}\n\nGenerate ${count} creative tagalog pick-up lines. ${categoryPrompt} ${translationInstructions}`
+          }],
+          max_tokens: 500, // Limit token count to speed up response
+          temperature: 0.7 // Lower temperature for more focused responses
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId); // Clear the timeout if the request completes
+      
+      console.log('OpenRouter API response status:', response.status);
+      
+      // Handle API errors
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenRouter API Error:', {
+          status: response.status,
+          errorText: errorText.substring(0, 200) // Log first 200 chars of error
+        });
+        
+        return provideFallbackLines(count);
+      }
+      
+      // Process the successful response
+      const data = await response.json();
+      
+      if (!data.choices?.[0]?.message?.content) {
+        console.error('Invalid response format from OpenRouter API');
+        return provideFallbackLines(count);
+      }
+      
+      // Process the response content
+      const content = data.choices[0].message.content;
+      console.log('Raw API response content (first 100 chars):', content.substring(0, 100));
+      
+      // Extract JSON from the content
+      let lines = [];
+      try {
+        lines = extractPickupLines(content, count, includeTranslations);
+        
+        if (!lines || lines.length === 0) {
+          console.log('Failed to extract pickup lines, using fallbacks');
+          return provideFallbackLines(count);
+        }
+        
+        return {
+          statusCode: 200,
+          body: JSON.stringify({ lines }),
+          headers: { 'Content-Type': 'application/json' }
+        };
+      } catch (error) {
+        console.error('Error processing response:', error);
+        return provideFallbackLines(count);
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error('Error making API request:', error instanceof Error ? error.message : 'Unknown error');
+      
+      // Check if it's an AbortError (timeout)
+      if (error.name === 'AbortError') {
+        console.log('Request timed out, using fallback pickup lines');
+      }
+      
+      return provideFallbackLines(count);
+    }
   } catch (error) {
-    console.error('Error generating response:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error in handler:', error instanceof Error ? error.message : 'Unknown error');
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to generate response' }),
@@ -53,6 +134,77 @@ exports.handler = async function(event, context) {
     };
   }
 };
+
+// Extract pickup lines from API response
+function extractPickupLines(content, count, includeTranslations) {
+  // Try to extract JSON from the content
+  if (includeTranslations) {
+    try {
+      // Check for JSON in code blocks
+      const jsonMatch = content.match(/```(?:json)?([\s\S]*?)```/);
+      let jsonContent = jsonMatch && jsonMatch[1] ? jsonMatch[1].trim() : content;
+      
+      // Try to find array pattern if not in code blocks
+      if (!jsonMatch) {
+        const arrayMatch = content.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (arrayMatch) {
+          jsonContent = arrayMatch[0];
+        }
+      }
+      
+      // Parse the JSON
+      let parsed = JSON.parse(jsonContent);
+      
+      if (Array.isArray(parsed)) {
+        // Format: [{tagalog: "...", translation: "..."}, ...]
+        return parsed.slice(0, count).map(item => ({
+          tagalog: item.tagalog || item.Tagalog || '',
+          translation: item.translation || item.Translation || item.english || item.English || ''
+        }));
+      } else if (parsed && typeof parsed === 'object') {
+        // Format: {1: {tagalog: "...", translation: "..."}, ...}
+        const lines = [];
+        for (const key in parsed) {
+          if (lines.length >= count) break;
+          const item = parsed[key];
+          if (item && typeof item === 'object') {
+            lines.push({
+              tagalog: item.tagalog || item.Tagalog || '',
+              translation: item.translation || item.Translation || item.english || item.English || ''
+            });
+          }
+        }
+        return lines;
+      }
+    } catch (error) {
+      console.error('JSON parsing failed, trying text extraction');
+    }
+  }
+  
+  // Fallback to text processing if JSON parsing fails
+  const lines = content.split('\n')
+    .filter(line => line.trim().length > 0)
+    .map(line => line.replace(/^\d+[\.\)]\s*/, '').replace(/^[-•*]\s*/, '').trim())
+    .filter(line => line.length > 5);
+  
+  // For non-JSON responses, try to pair lines (odd = tagalog, even = translation)
+  if (includeTranslations && lines.length >= 2) {
+    const result = [];
+    for (let i = 0; i < lines.length - 1 && result.length < count; i += 2) {
+      result.push({
+        tagalog: lines[i],
+        translation: lines[i + 1] || ''
+      });
+    }
+    return result;
+  }
+  
+  // If we can't pair them, just return tagalog lines
+  return lines.slice(0, count).map(line => ({
+    tagalog: line,
+    translation: ''
+  }));
+}
 
 // Function to provide fallback pickup lines
 function provideFallbackLines(count) {
