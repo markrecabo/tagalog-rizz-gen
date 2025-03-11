@@ -290,6 +290,37 @@ export default function ChatPage() {
 
   return (
     <div className="container mx-auto p-4">
+      {/* Structured data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "Tagalog Pickup Line Generator",
+            "description": "A fun and personal project by Mark Recabo that generates Tagalog pickup lines using Google Gemini via OpenRouter API.",
+            "applicationCategory": "Entertainment",
+            "operatingSystem": "Any",
+            "author": {
+              "@type": "Person",
+              "name": "Mark Recabo"
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          })
+        }}
+      />
+      
+      <header className="mb-6">
+        <h1 className="sr-only">Tagalog Pickup Line Generator - A fun project by Mark Recabo</h1>
+        <p className="text-sm text-muted-foreground text-center mb-4">
+          A fun personal project by Mark Recabo using Google Gemini via OpenRouter API
+        </p>
+      </header>
+      
       <div className="flex flex-col md:flex-row gap-4">
         {/* Category Filter */}
         <div className="md:w-1/6">
@@ -324,7 +355,9 @@ export default function ChatPage() {
         <div className="md:w-1/2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-center flex-1">Tagalog Rizz Generator</CardTitle>
+              <CardTitle className="text-center flex-1">
+                <h2 className="text-xl font-bold">Tagalog Rizz Generator</h2>
+              </CardTitle>
               <div className="flex items-center gap-2">
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                   <DialogTrigger asChild>
@@ -379,23 +412,24 @@ export default function ChatPage() {
 
                 <Button 
                   onClick={generatePickupLines} 
-                  disabled={loading} 
-                  className="w-full"
+                  className="w-full" 
+                  disabled={loading}
+                  aria-label="Generate Tagalog pickup lines"
                 >
                   {loading ? 'Generating...' : 'Generate Pickup Lines'}
                 </Button>
               </div>
 
               {error && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-md">
+                <div className="text-red-500 text-sm p-2 border border-red-200 rounded bg-red-50">
                   {error}
                 </div>
               )}
 
               {pickupLines.length > 0 && (
-                <div className="mt-6 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">
+                <section aria-labelledby="pickup-lines-heading">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 id="pickup-lines-heading" className="text-lg font-medium">
                       Generated Pick-up Lines
                       {selectedCategory && (
                         <span className="ml-2 text-sm font-normal text-muted-foreground capitalize">
@@ -415,7 +449,7 @@ export default function ChatPage() {
                     {pickupLines.map((line) => (
                       <Card key={line.id} className="relative">
                         <CardContent className="p-4">
-                          <p className="font-medium">{line.content}</p>
+                          <p lang="tl" className="font-medium">{line.content}</p>
                           {showTranslations && line.translation && (
                             <p className="text-sm text-muted-foreground mt-1 italic">
                               {line.translation}
@@ -428,6 +462,7 @@ export default function ChatPage() {
                               onClick={() => handleSave(line.id)}
                               className="h-8 w-8"
                               disabled={line.saved || isSaving}
+                              aria-label={line.saved ? "Already saved to favorites" : "Save to favorites"}
                             >
                               <Heart className={`h-4 w-4 ${line.saved ? 'fill-red-500 text-red-500' : ''}`} />
                             </Button>
@@ -436,7 +471,7 @@ export default function ChatPage() {
                       </Card>
                     ))}
                   </div>
-                </div>
+                </section>
               )}
             </CardContent>
           </Card>
@@ -446,7 +481,9 @@ export default function ChatPage() {
         <div className="md:w-1/3">
           <Card className="h-full">
             <CardHeader>
-              <CardTitle className="text-center">My Favorites</CardTitle>
+              <CardTitle className="text-center">
+                <h2 className="text-xl font-bold">My Favorites</h2>
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 overflow-y-auto max-h-[70vh]">
               {!user ? (
@@ -463,32 +500,35 @@ export default function ChatPage() {
                   <p className="text-sm mt-2">Save some pickup lines to see them here</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {favorites.map((favorite) => (
-                    <Card key={favorite.id} className="bg-muted/30">
-                      <CardContent className="p-3">
-                        <div className="flex justify-between items-start gap-2">
-                          <div>
-                            <p className="text-sm font-medium">{favorite.content}</p>
-                            {showTranslations && favorite.translation && (
-                              <p className="text-xs text-muted-foreground mt-1 italic">
-                                {favorite.translation}
-                              </p>
-                            )}
+                <section aria-label="Saved favorite pickup lines">
+                  <div className="space-y-3">
+                    {favorites.map((favorite) => (
+                      <Card key={favorite.id} className="bg-muted/30">
+                        <CardContent className="p-3">
+                          <div className="flex justify-between items-start gap-2">
+                            <div>
+                              <p lang="tl" className="text-sm font-medium">{favorite.content}</p>
+                              {showTranslations && favorite.translation && (
+                                <p className="text-xs text-muted-foreground mt-1 italic">
+                                  {favorite.translation}
+                                </p>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveFavorite(favorite.id)}
+                              className="h-6 w-6 shrink-0 hover:bg-red-100 hover:text-red-500"
+                              aria-label="Remove from favorites"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveFavorite(favorite.id)}
-                            className="h-6 w-6 shrink-0 hover:bg-red-100 hover:text-red-500"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </section>
               )}
             </CardContent>
           </Card>
