@@ -74,11 +74,32 @@ export async function POST(req: Request) {
     const content = data.choices[0].message.content;
     console.log('Raw API response content:', content);
     
-    let lines;
+    let lines: { tagalog: string, translation: string }[] = [];
     if (includeTranslations) {
-      lines = processJsonResponse(content, lineCount);
+      try {
+        const jsonLines = processJsonResponse(content, lineCount);
+        // If processJsonResponse returns undefined or empty array, fall back to text processing
+        if (!jsonLines || jsonLines.length === 0) {
+          console.log('JSON processing failed, falling back to text processing');
+          const textLines = processPickupLines(content, lineCount);
+          lines = textLines.map(line => ({ tagalog: line, translation: '' }));
+        } else {
+          lines = jsonLines;
+        }
+      } catch (error) {
+        console.error('Error in JSON processing:', error);
+        const textLines = processPickupLines(content, lineCount);
+        lines = textLines.map(line => ({ tagalog: line, translation: '' }));
+      }
     } else {
-      lines = processPickupLines(content, lineCount);
+      const textLines = processPickupLines(content, lineCount);
+      lines = textLines.map(line => ({ tagalog: line, translation: '' }));
+    }
+    
+    // Ensure lines is always an array
+    if (!Array.isArray(lines)) {
+      console.error('Lines is not an array:', lines);
+      lines = [];
     }
     
     console.log('Processed lines:', lines);
@@ -94,7 +115,7 @@ export async function POST(req: Request) {
 }
 
 // Process JSON response with tagalog and translation fields
-function processJsonResponse(content: string, expectedCount: number) {
+function processJsonResponse(content: string, expectedCount: number): { tagalog: string, translation: string }[] {
   try {
     // Try to extract JSON from the content (in case there's extra text)
     const jsonMatch = content.match(/\[[\s\S]*\]/);
@@ -119,6 +140,8 @@ function processJsonResponse(content: string, expectedCount: number) {
         return { tagalog: '', translation: '' };
       });
     }
+    // If parsed is not an array, return an empty array
+    return [];
   } catch (error) {
     console.error('Error parsing JSON response:', error);
     // Fall back to regular processing if JSON parsing fails
@@ -126,7 +149,7 @@ function processJsonResponse(content: string, expectedCount: number) {
   
   // If JSON parsing fails, try to extract pairs of lines
   const lines = content.split('\n').filter(line => line.trim());
-  const result = [];
+  const result: { tagalog: string, translation: string }[] = [];
   
   for (let i = 0; i < lines.length && result.length < expectedCount; i++) {
     const line = lines[i].trim();
