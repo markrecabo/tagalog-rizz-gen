@@ -68,10 +68,16 @@ export default function ChatPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [showTranslations, setShowTranslations] = useState(true);
 
-  const supabase = createClientComponentClient();
+  // Create Supabase client safely with fallback for SSR
+  const supabase = typeof window !== 'undefined' 
+    ? createClientComponentClient() 
+    : null;
 
   // Check for user session on component mount
   useEffect(() => {
+    // Skip if we're in SSR or if Supabase client couldn't be created
+    if (!supabase) return;
+    
     const checkSession = async () => {
       try {
         // Use our custom session endpoint instead of direct Supabase call
@@ -105,7 +111,7 @@ export default function ChatPage() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   // Fetch user's favorites
   const fetchFavorites = async () => {
@@ -246,7 +252,7 @@ export default function ChatPage() {
 
   // Handle sign out
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await supabase?.auth.signOut();
     router.refresh();
   };
 
